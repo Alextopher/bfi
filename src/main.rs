@@ -44,11 +44,11 @@ fn main() {
 
     if args.optimize {
         let flags = OptimisationsFlags::all();
-        let errs;
-        (instructions, errs) = bfc_ir::optimize(instructions, flags);
+        let warnings;
+        (instructions, warnings) = bfc_ir::optimize(instructions, flags);
 
-        if !errs.is_empty() {
-            for err in errs {
+        if !warnings.is_empty() {
+            for err in warnings {
                 eprintln!("{:?}", err);
             }
             exit(1);

@@ -2,7 +2,6 @@ use std::{
     cmp::Ordering,
     num::Wrapping,
     sync::mpsc::{channel, Receiver, RecvError, SendError, Sender},
-    thread,
 };
 
 use bfc_ir::AstNode;
@@ -52,8 +51,9 @@ impl<'a> Interpreter<'a> {
         )
     }
 
+    /// Run the interpreter in a new thread
     pub fn run(mut self) -> Result<(), RunTimeError> {
-        thread::scope(move |_| self.run_body(self.instructions))
+        self.run_body(self.instructions)
     }
 
     fn run_body(&mut self, body: &[AstNode]) -> Result<(), RunTimeError> {
