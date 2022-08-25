@@ -1,10 +1,17 @@
 [package]
 name = "bfi"
-version = "0.1.1"
+version = "0.1.2"
 edition = "2021"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
 bfc-ir = { git = "https://github.com/Alextopher/bfc-ir.git", branch = "master" }
-clap = { version = "3.2.17", features = ["clap_derive", "derive"] }
+clap = { version = "^3.2", features = ["clap_derive", "derive"], optional = true }
+
+[[bin]]
+name = "bfi"
+required-features = ["build-binary"]
+
+[features]
+build-binary = ["clap"]
