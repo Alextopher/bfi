@@ -1,38 +1,26 @@
-use std::{path::Path, thread};
-
-use bfc_ir::OptimisationsFlags;
-
-use crate::Interpreter;
+use crate::{test_blocking, TestResult, TestResults};
+use std::path::Path;
 
 fn test_file<P: AsRef<Path>>(program: P, output: P) {
     // Read the file
     let program = std::fs::read_to_string(program).unwrap();
-    let expected = std::fs::read_to_string(output).unwrap();
+    let expected: Vec<u8> = std::fs::read_to_string(output).unwrap().bytes().collect();
 
-    // Compile the program
-    let instructions = bfc_ir::parse(&program).unwrap();
-
-    // Optimize the program
-    let flags = OptimisationsFlags::all();
-
-    let (optimized, errors) = bfc_ir::optimize(instructions, flags);
-    assert!(errors.is_empty());
-
-    // Prepare the interpreter
-    let (_tx, rx, interpreter) = Interpreter::new(&optimized, 10000000000000);
-
-    let output = thread::spawn(move || {
-        // receive from rx into a read_to_string
-        let mut s = String::new();
-        for b in rx.iter().map(|b| b.0 as char) {
-            s.push(b);
+    match test_blocking(&program, &[], &expected, u64::MAX) {
+        TestResults::OutputsDontMatchInputs => unreachable!(),
+        TestResults::ParseError(e) => panic!("failed to compile program {:?}", e),
+        TestResults::Results(results) => {
+            for r in results {
+                match r {
+                    TestResult::Ok => {}
+                    TestResult::RunTimeError(e) => panic!("RunTimeError {:?}", e),
+                    TestResult::UnexpectedOutput { expected, output } => {
+                        assert_eq!(expected, output)
+                    }
+                }
+            }
         }
-        s
-    });
-
-    interpreter.run().unwrap();
-
-    assert_eq!(expected, output.join().unwrap());
+    }
 }
 
 #[test]
@@ -56,7 +44,7 @@ fn hello_world_bf() {
     test_file(
         "sample_programs/hello_world.bf",
         "sample_programs/hello_world.bf.out",
-    )
+    );
 }
 
 #[test]
@@ -64,7 +52,7 @@ fn mandelbrot_bf() {
     test_file(
         "sample_programs/mandelbrot.bf",
         "sample_programs/mandelbrot.bf.out",
-    )
+    );
 }
 
 #[test]
@@ -72,5 +60,5 @@ fn multiply_bf() {
     test_file(
         "sample_programs/multiply.bf",
         "sample_programs/multiply.bf.out",
-    )
+    );
 }

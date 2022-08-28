@@ -55,7 +55,8 @@ fn main() {
         }
     }
 
-    let (tx, rx, interpreter) = Interpreter::new(&instructions, args.max_iterations);
+    let interpreter = Interpreter::new(instructions, args.max_iterations);
+    let (tx, rx, handle) = interpreter.spawn();
 
     // On one thread read from stdin
     thread::spawn(move || {
@@ -74,12 +75,20 @@ fn main() {
         let mut stdout = io::stdout().lock();
         let mut buf: [u8; 1] = [0];
         while let Ok(b) = rx.recv() {
-            buf[0] = b.0;
-            stdout.write_all(&buf).unwrap();
+            match b {
+                Ok(b) => {
+                    buf[0] = b.0;
+                    stdout.write_all(&buf).unwrap();
+                }
+                Err(err) => {
+                    eprintln!("Runtime Error {:?}", err);
+                    exit(1);
+                }
+            }
         }
         stdout.flush().unwrap();
     });
 
-    // Run the program
-    interpreter.run().unwrap();
+    // Join the the VM
+    handle.join().unwrap();
 }

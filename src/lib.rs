@@ -3,48 +3,88 @@ mod interpreter;
 #[cfg(test)]
 mod tests;
 
-use std::{num::Wrapping, thread};
+use Error::*;
 
 pub use bfc_ir::{optimize, parse, OptimisationsFlags};
 pub use interpreter::{Interpreter, RunTimeError};
 
-use Error::*;
-
 pub enum Error {
     ParseError(bfc_ir::ParseError),
-    RunTimeError(interpreter::RunTimeError),
+    RunTimeError((Vec<u8>, interpreter::RunTimeError)),
 }
 
-/// Executes a brainfuck program a completion
-pub fn execute(
-    program: &str,
-    input: &[u8],
-    max_iterations: u64,
-    optimize: bool,
-) -> Result<Vec<u8>, Error> {
+pub enum TestResults {
+    OutputsDontMatchInputs,
+    ParseError(bfc_ir::ParseError),
+    Results(Vec<TestResult>),
+}
+
+pub enum TestResult {
+    Ok,
+    RunTimeError((Vec<u8>, interpreter::RunTimeError)),
+    UnexpectedOutput { expected: Vec<u8>, output: Vec<u8> },
+}
+
+/// Executes a Brainfuck program to completion
+pub async fn execute(program: &str, input: &[u8], max_iterations: u64) -> Result<Vec<u8>, Error> {
     let mut instructions = bfc_ir::parse(program).map_err(ParseError)?;
 
-    if optimize {
-        let flags = OptimisationsFlags::all();
-        (instructions, _) = bfc_ir::optimize(instructions, flags);
-    }
+    let flags = OptimisationsFlags::all();
+    (instructions, _) = bfc_ir::optimize(instructions, flags);
 
-    let (tx, rx, interpreter) = Interpreter::new(&instructions, max_iterations);
+    let interpreter = Interpreter::new(instructions, max_iterations);
 
-    for b in input {
-        tx.send(Wrapping(*b)).unwrap();
-    }
-
-    // Return results into a vector
-    let results = thread::scope(move |_| {
-        let mut results = Vec::new();
-        while let Ok(b) = rx.recv() {
-            results.push(b.0)
-        }
-        results
-    });
-
-    interpreter.run().map_err(RunTimeError)?;
+    let results = interpreter.run(input).map_err(Error::RunTimeError)?;
 
     Ok(results)
+}
+
+/// Test a Brainfuck program
+pub fn test_blocking(
+    program: &str,
+    inputs: &[u8],
+    outputs: &[u8],
+    max_iterations: u64,
+) -> TestResults {
+    tests_blocking(program, &[inputs], &[outputs], max_iterations)
+}
+
+pub fn tests_blocking(
+    program: &str,
+    inputs: &[&[u8]],
+    outputs: &[&[u8]],
+    max_iterations: u64,
+) -> TestResults {
+    if inputs.len() != outputs.len() {
+        return TestResults::OutputsDontMatchInputs;
+    }
+
+    let instructions = match bfc_ir::parse(program) {
+        Ok(instructions) => {
+            let (inst, _) = bfc_ir::optimize(instructions, OptimisationsFlags::all());
+            inst
+        }
+        Err(err) => return TestResults::ParseError(err),
+    };
+
+    let interpreter = Interpreter::new(instructions, max_iterations);
+    let mut results: Vec<TestResult> = Vec::with_capacity(inputs.len());
+
+    for (input, expected) in inputs.iter().zip(outputs) {
+        match interpreter.run(input) {
+            Ok(output) => {
+                if *expected != output {
+                    results.push(TestResult::UnexpectedOutput {
+                        expected: Vec::from(*expected),
+                        output,
+                    });
+                } else {
+                    results.push(TestResult::Ok);
+                }
+            }
+            Err(e) => results.push(TestResult::RunTimeError(e)),
+        }
+    }
+
+    TestResults::Results(results)
 }
