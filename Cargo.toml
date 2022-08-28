@@ -8,7 +8,6 @@ edition = "2021"
 [dependencies]
 bfc-ir = { git = "https://github.com/Alextopher/bfc-ir.git", branch = "master" }
 clap = { version = "^3.2", features = ["clap_derive", "derive"], optional = true }
-futures = "0.3.23"
 
 [[bin]]
 name = "bfi"

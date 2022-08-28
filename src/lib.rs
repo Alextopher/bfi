@@ -26,7 +26,7 @@ pub enum TestResult {
 }
 
 /// Executes a Brainfuck program to completion
-pub async fn execute(program: &str, input: &[u8], max_iterations: u64) -> Result<Vec<u8>, Error> {
+pub fn execute(program: &str, input: &[u8], max_iterations: u64) -> Result<Vec<u8>, Error> {
     let mut instructions = bfc_ir::parse(program).map_err(ParseError)?;
 
     let flags = OptimisationsFlags::all();
