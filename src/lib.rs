@@ -26,7 +26,10 @@ pub enum TestResult {
 }
 
 /// Executes a Brainfuck program to completion
-pub fn execute(program: &str, input: &[u8], max_iterations: u64) -> Result<Vec<u8>, Error> {
+pub fn execute<I>(program: &str, input: I, max_iterations: u64) -> Result<Vec<u8>, Error>
+where
+    I: IntoIterator<Item = u8>,
+{
     let mut instructions = bfc_ir::parse(program).map_err(ParseError)?;
 
     let flags = OptimisationsFlags::all();
@@ -39,22 +42,30 @@ pub fn execute(program: &str, input: &[u8], max_iterations: u64) -> Result<Vec<u
     Ok(results)
 }
 
-/// Test a Brainfuck program
 pub fn test_blocking(
     program: &str,
-    inputs: &[u8],
-    outputs: &[u8],
+    input: Vec<u8>,
+    expected: Vec<u8>,
     max_iterations: u64,
 ) -> TestResults {
-    tests_blocking(program, &[inputs], &[outputs], max_iterations)
+    tests_blocking(
+        program,
+        std::iter::once(input),
+        std::iter::once(expected),
+        max_iterations,
+    )
 }
 
-pub fn tests_blocking(
+pub fn tests_blocking<I, O>(
     program: &str,
-    inputs: &[&[u8]],
-    outputs: &[&[u8]],
+    inputs: I,
+    outputs: O,
     max_iterations: u64,
-) -> TestResults {
+) -> TestResults
+where
+    I: Iterator<Item = Vec<u8>> + ExactSizeIterator,
+    O: Iterator<Item = Vec<u8>> + ExactSizeIterator,
+{
     if inputs.len() != outputs.len() {
         return TestResults::OutputsDontMatchInputs;
     }
@@ -70,14 +81,11 @@ pub fn tests_blocking(
     let interpreter = Interpreter::new(instructions, max_iterations);
     let mut results: Vec<TestResult> = Vec::with_capacity(inputs.len());
 
-    for (input, expected) in inputs.iter().zip(outputs) {
+    for (input, expected) in inputs.into_iter().zip(outputs) {
         match interpreter.run(input) {
             Ok(output) => {
-                if *expected != output {
-                    results.push(TestResult::UnexpectedOutput {
-                        expected: Vec::from(*expected),
-                        output,
-                    });
+                if expected != output {
+                    results.push(TestResult::UnexpectedOutput { expected, output });
                 } else {
                     results.push(TestResult::Ok);
                 }

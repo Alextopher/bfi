@@ -6,7 +6,7 @@ fn test_file<P: AsRef<Path>>(program: P, output: P) {
     let program = std::fs::read_to_string(program).unwrap();
     let expected: Vec<u8> = std::fs::read_to_string(output).unwrap().bytes().collect();
 
-    match test_blocking(&program, &[], &expected, u64::MAX) {
+    match test_blocking(&program, vec![], expected, u64::MAX) {
         TestResults::OutputsDontMatchInputs => unreachable!(),
         TestResults::ParseError(e) => panic!("failed to compile program {:?}", e),
         TestResults::Results(results) => {

@@ -41,12 +41,15 @@ impl Interpreter {
     }
 
     /// Spawn a new interpreter and run it to completion with provide input
-    pub fn run(&self, inputs: &[u8]) -> Result<Vec<u8>, (Vec<u8>, RunTimeError)> {
+    pub fn run<I>(&self, inputs: I) -> Result<Vec<u8>, (Vec<u8>, RunTimeError)>
+    where
+        I: IntoIterator<Item = u8>,
+    {
         let (input_tx, output_rx, inner) = self.create();
 
         inputs
-            .iter()
-            .map(|i| Wrapping(*i))
+            .into_iter()
+            .map(|i| Wrapping(i))
             .for_each(|i| input_tx.send(i).unwrap());
 
         inner.run_blocking();
