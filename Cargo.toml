@@ -1,6 +1,6 @@
 [package]
 name = "bfi"
-version = "0.1.5"
+version = "0.1.6"
 edition = "2021"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
@@ -11,7 +11,8 @@ clap = { version = "^3.2", features = ["clap_derive", "derive"], optional = true
 
 [[bin]]
 name = "bfi"
-required-features = ["build-binary"]
+required-features = ["binary"]
 
 [features]
-build-binary = ["dep:clap"]
+default = ["binary"]
+binary = ["dep:clap"]

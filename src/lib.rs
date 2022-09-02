@@ -1,8 +1,8 @@
 mod interpreter;
 
-#[cfg(test)]
-mod tests;
-
+use bfc_ir::ParseError;
+use interpreter::{InputTx, OutputRx};
+use std::thread::JoinHandle;
 use Error::*;
 
 pub use bfc_ir::{optimize, parse, OptimisationsFlags};
@@ -40,6 +40,20 @@ where
     let results = interpreter.run(input).map_err(Error::RunTimeError)?;
 
     Ok(results)
+}
+
+pub fn spawn(
+    program: &str,
+    max_iterations: u64,
+) -> Result<(InputTx, OutputRx, JoinHandle<()>), ParseError> {
+    let mut instructions = bfc_ir::parse(program)?;
+
+    let flags = OptimisationsFlags::all();
+    (instructions, _) = bfc_ir::optimize(instructions, flags);
+
+    let interpreter = Interpreter::new(instructions, max_iterations);
+
+    Ok(interpreter.spawn())
 }
 
 pub fn test_blocking(
@@ -96,3 +110,6 @@ where
 
     TestResults::Results(results)
 }
+
+#[cfg(test)]
+mod tests;
