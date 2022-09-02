@@ -24,6 +24,11 @@ fn test_file<P: AsRef<Path>>(program: P, output: P) {
 }
 
 #[test]
+fn inputs() {
+    test_blocking(",.,.,.", vec![1, 2, 3], vec![1, 2, 3], u64::MAX);
+}
+
+#[test]
 fn bang_bang_bf() {
     test_file(
         "sample_programs/bangbang.bf",
