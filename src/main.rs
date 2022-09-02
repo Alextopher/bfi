@@ -64,20 +64,24 @@ fn main() {
     let interpreter = Interpreter::new(instructions, args.max_iterations);
     let (tx, rx, handle) = interpreter.spawn();
 
-    // On one thread read from stdin
-    thread::spawn(move || {
-        // lock stdin
-        let mut stdin = io::stdin().lock();
-
-        loop {
-            let mut buffer = String::new();
-            stdin.read_line(&mut buffer).unwrap();
-            buffer.bytes().for_each(|b| tx.send(Wrapping(b)).unwrap())
-        }
-    });
-
-    // On the another write to stdout
     if args.raw {
+        // On one thread read from stdin
+        thread::spawn(move || {
+            // lock stdin
+            let mut stdin = io::stdin().lock();
+
+            loop {
+                let mut buffer = String::new();
+                stdin.read_line(&mut buffer).unwrap();
+                buffer
+                    .split_whitespace()
+                    .map(|s| s.parse())
+                    .filter(|b| b.is_ok())
+                    .for_each(|b| tx.send(Wrapping(b.unwrap())).unwrap())
+            }
+        });
+
+        // On the another write to stdout
         thread::spawn(move || {
             let mut stdout = io::stdout().lock();
             while let Ok(b) = rx.recv() {
@@ -94,6 +98,19 @@ fn main() {
             stdout.flush().unwrap();
         });
     } else {
+        // On one thread read from stdin
+        thread::spawn(move || {
+            // lock stdin
+            let mut stdin = io::stdin().lock();
+
+            loop {
+                let mut buffer = String::new();
+                stdin.read_line(&mut buffer).unwrap();
+                buffer.bytes().for_each(|b| tx.send(Wrapping(b)).unwrap())
+            }
+        });
+
+        // On the another write to stdout
         thread::spawn(move || {
             let mut stdout = io::stdout().lock();
             let mut buf: [u8; 1] = [0];
