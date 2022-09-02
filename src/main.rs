@@ -13,7 +13,7 @@ use clap::Parser;
 #[clap(author, version, about, long_about = None)]
 struct Args {
     #[clap(value_parser)]
-    brainfuck: String,
+    brainfuck: Option<String>,
 
     #[clap(short, long, value_parser, default_value = "true")]
     optimize: bool,
@@ -29,9 +29,16 @@ fn main() {
     let args = Args::parse();
 
     // Attempt to parse the file as a path
-    let program = match fs::read_to_string(&args.brainfuck) {
-        Ok(program) => program,
-        Err(_) => args.brainfuck,
+    let program = match &args.brainfuck {
+        Some(input) => match fs::read_to_string(input) {
+            Ok(program) => program,
+            Err(_) => input.to_string(),
+        },
+        None => {
+            let mut buf = String::new();
+            io::stdin().read_line(&mut buf).unwrap();
+            buf
+        }
     };
 
     let mut instructions = match bfc_ir::parse(&program) {
