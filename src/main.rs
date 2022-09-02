@@ -58,7 +58,6 @@ fn main() {
             for err in warnings {
                 eprintln!("{:?}", err);
             }
-            exit(1);
         }
     }
 
